@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>title</title>
+
+	<style>
+		body{
+			margin:0;
+		}
+		h3{
+  margin: 0px;
+  padding: 0px;
+  
+}
+		canvas{width : 100%; height : 100%;}
+
+	</style>
+	
+</head>
+<body>
+	<div id = "scoreText"style="position: absolute; top: 10px; left: 100px;"></div>
+	
+	<script  src = "three/three.js"></script>
+
+	<script>
+		hasCollided = false;
+
+		boxes = [];
+			var particles = [];
+			var particleCount=20;
+			cloudParticles = [];
+			heroVertical = 1.5;
+			increase = true;
+			pressed = false;
+
+			
+		function init(){
+			scene = new THREE.Scene();
+			//orthographic , perspective
+			camera = new THREE.PerspectiveCamera(90 , window.innerWidth / window.innerHeight, 0.1, 1000);
+			 renderer = new THREE.WebGLRenderer();//renderer with transparent backdrop
+	    	renderer.setClearColor(0xfffafa, 1); 
+			renderer.shadowMap.enabled = true;//enable shadow
+	   			 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+			renderer.setSize(window.innerWidth, window.innerHeight);
+			document.body.appendChild(renderer.domElement);
+
+			window.addEventListener('resize', function()
+			{
+				var width = window.innerWidth;
+				var height = window.innerHeight;
+				renderer.setSize(width, height);
+				camera.aspect = width / height;
+
+				camera.updateProjectionMatrix();
+			}
+			)
+			//11.5
+			//clock = new THREE.clock();
+			clock= new THREE.Clock();
+			clock.start();
+			
+	
+			camera.position.z = 11.5;
+			camera.position.x = 0;
+			camera.position.y = 0;
+
+			camera.lookAt(0,7.0,-2.5);
+			/*camera.position.z = 11.5;
+			camera.position.x = 10;
+			camera.position.y = 2;
+	*/
+
+
+    //camera.rotation.z = 0.27;
+			/*var geometry = new THREE.BoxGeometry(1 , 1 , 1 , 1);
+
+			var material = new THREE.MeshBasicMaterial({color : 0x0088ff , wireframe : true});
+			var cube = new THREE.Mesh(geometry , material);
+
+			camera.position.z = 3;
+
+			scene.add(cube);*/
+			worldRadius = 9.55;
+			//pathAngleValues=[1.52,1.57,1.62];
+
+			var loader = new THREE.TextureLoader();
+			const textureSphere = loader.load('texture2.jpg');
+			const textureHero = loader.load('texture3.jpg');
+			//geometry-> radius, width,height segments
+			var geometry = new THREE.SphereGeometry( worldRadius , 32, 32 );
+			//material -> texture or color , wire frame
+			//color: 0xC0C0C0
+			var material = new THREE.MeshStandardMaterial( { map : textureSphere, flatShading:true } );
+			//mesh - > geometry, material 
+			Ground = new THREE.Mesh( geometry, material );
+			//sphericalHelper.set( worldRadius-0.3, pathAngleValues[row], -rollingGroundSphere.rotation.x+4 );
+			//add to scene
+			Ground.rotation.z += Math.PI / 2;
+			Ground.recieveShadow = true;
+			Ground.castShadow = false;
+			scene.add( Ground );
+
+
+			var sphereGeometry = new THREE.DodecahedronGeometry( 0.25, 1);
+			//var sphereGeometry = new THREE.SphereGeometry( 0.25, 32,32);
+			//color: 0x886633
+			var sphereMaterial = new THREE.MeshStandardMaterial( {map :textureHero ,color:0x00ffff,flatShading:true  } );
+			//,shading:THREE.FlatShading} )
+			heroSphere = new THREE.Mesh( sphereGeometry, sphereMaterial );
+			heroSphere.position.z = worldRadius;
+			heroSphere.position.y = 1.5;
+			heroSphere.position.x = 0;
+			heroSphere.recieveShadow = false;
+			heroSphere.castShadow = true;
+			document.addEventListener("keydown", onDocumentKeyDown, false);
+	    	scene.fog = new THREE.FogExp2(0x03544e, 0.001);
+
+			addLight();
+
+			addExplosion();
+			scene.add(heroSphere)
+			//alert(randomPhi);
+			//addBox(worldRadius, 0, 0);
+			createBoxes(0,20);
+			//addBox(worldRadius + 0.1,1.0,0.10);
+			//addBox(worldRadius + 0.1,2.0,0.15);
+					   // impact();
+
+			createBoxes(1,15);
+			createBoxes(-1,15);
+			addCloud();
+		}
+	function addCloud()
+  	{
+  		var loader = new THREE.TextureLoader();
+		loader.load("smoke-1.png", function(texture){
+		cloudGeo = new THREE.PlaneBufferGeometry(500,500);
+	    cloudMaterial = new THREE.MeshLambertMaterial({
+	    map: texture,
+	    transparent: true
+	     });
+	  
+
+	  for(let p=0; p<25; p++) {
+	    var cloud = new THREE.Mesh(cloudGeo,cloudMaterial);
+	    cloud.position.set(
+	      Math.random()*700 -400,
+	      100,
+	      Math.random()*500 - 450
+	    );
+	    cloud.rotation.x = 1.16;
+	    //cloud.rotation.y = -0.12;
+	    //cloud.rotation.z = Math.random()*360;
+	    cloud.material.opacity = 0.3;
+	    cloudParticles.push(cloud); 
+		
+	    scene.add(cloud);
+	  }
+	});
+
+  }
+
+
+
+  		function ballJump()
+  		{
+  			//9.55
+  			if(increase)
+  			{
+  				if(heroSphere.position.z < worldRadius + heroVertical){
+  					heroSphere.position.z += 0.06;
+  					//console.log(heroSphere.position.z);
+  				}
+  				else{
+  					increase = false;
+  				}
+
+  				
+
+  			}
+  			if(!increase)
+  			{
+  				if(heroSphere.position.z > worldRadius){
+  					heroSphere.position.z -= 0.06;
+  					console.log(heroSphere.position.z);
+  				}
+  				else{
+  					increase = true;
+  					pressed = false;
+  				}
+
+  			}
+  	
+  		}
+
+		  function moveClouds()
+		  {
+		  	 cloudParticles.forEach(particle => {
+		      particle.rotation.z += 0.004;
+		   });
+		  }
+
+		function addBox(r, phi , theta){
+			var loader = new THREE.TextureLoader();
+		const textureBox = loader.load('BoxTexture.jpg');
+			 box = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.5, 0.5),
+			 	new THREE.MeshStandardMaterial( { map : textureBox,flatShading:true  } ));
+				box.castShadow = true;
+				box.recieveShadow =false;
+			boxes.push(box);
+			//box.position.z = worldRadius ;
+			//y boxes are 
+			//box.position.y = 6;
+			//x ranges -1,0,1
+			//box.position.x = 1;
+			//phi 0 - 3.14 mid lane, theta 0, 3.14 
+			//phi 0-3.14 right lane,  theta 0.25
+			//phi 0-3.14 , theta 6.06 left lane 
+			//THREE.Math.degToRad(0)
+			box.position.setFromSphericalCoords(worldRadius + 0.1, phi ,theta);
+			box.lookAt(Ground.position);
+			Ground.add(box);
+			//scene.add(box);
+
+
+
+		};
+
+	function addExplosion(){
+	    particleGeometry = new THREE.Geometry();
+	    for (var i = 0; i < particleCount; i ++ ) {
+	        var vertex = new THREE.Vector3();
+	        particleGeometry.vertices.push( vertex );
+	    }
+	    var pMaterial = new THREE.PointsMaterial({
+	      color: 0x8B4513,
+	      size: 0.15
+	    });
+	    particles = new THREE.Points( particleGeometry, pMaterial );
+	    scene.add( particles );
+	    particles.visible=false;
+	}
+function explode(){
+    particles.position.y=1.5;
+    particles.position.z=worldRadius;
+    particles.position.x=heroSphere.position.x;
+    for (var i = 0; i < particleCount; i ++ ) {
+        var vertex = new THREE.Vector3();
+        vertex.x = -0.2+Math.random() * 0.4;
+        vertex.y = -0.2+Math.random() * 0.4 ;
+        vertex.z = -0.2+Math.random() * 0.4;
+        particleGeometry.vertices[i]=vertex;
+    }
+    explosionPower=1.07;
+    particles.visible=true;
+}
+function doExplosionLogic(){
+	if(!particles.visible)return;
+	for (var i = 0; i < particleCount; i ++ ) {
+		particleGeometry.vertices[i].multiplyScalar(explosionPower);
+	}
+	if(explosionPower>1.005){
+		explosionPower-=0.001;
+	}else{
+		particles.visible=false;
+	}
+	particleGeometry.verticesNeedUpdate = true;
+}
+		function addLight()
+		{
+			var hemisphereLight = new THREE.HemisphereLight(0xfffafa,0x000000, .9)
+			scene.add(hemisphereLight);
+			//cdc1c5
+			sun = new THREE.DirectionalLight( 0xcdc1c5, 0.9);
+			sun.position.set( 12,10,7 );
+			sun.castShadow = true;
+			scene.add(sun);
+			//Set up shadow properties for the sun light
+			//shadow not working
+			//const helper = new THREE.CameraHelper( sun.shadow.camera );
+			//scene.add( helper );
+			/*const d = 10;
+			sun.shadow.camera.left = - d;
+			sun.shadow.camera.right = d;
+ 			sun.shadow.camera.top = d;
+			sun.shadow.camera.bottom = - d;
+*/
+			
+			sun.shadow.mapSize.width = 256;
+
+			sun.shadow.mapSize.height = 256;
+			sun.shadow.camera.near = 0.5;
+			sun.shadow.camera.far = 50 ;
+		}
+
+		function createBoxes(lane,noBoxes){
+			//zero is mid , -1 is left, 1 is right 
+			if(lane == 0){
+				for(i = 0 ;i < noBoxes; i++){
+					//phi theta
+					addBox(worldRadius + 0.1,1.55,generateRandomNumber(0,6.28));
+				}
+				/*for(i =0; i<noBoxes;i++){
+					addBox(worldRadius + 0.1,gegenerateRandomNumber(0,3.14)nerateRandomNumber(0,3.14),3.14);
+
+				}*/
+			}
+			else if(lane == 1){
+				
+				for(i =0; i<noBoxes;i++){
+					addBox(worldRadius + 0.1,1.68,generateRandomNumber(0,6.28));
+
+				}
+			}
+			else if (lane == -1){
+				
+				for(i =0; i<noBoxes;i++){
+					addBox(worldRadius + 0.1,1.43,generateRandomNumber(0,6.28));
+
+				}
+
+			}
+
+		}
+		function generateRandomNumber(min,max) {
+    	//Math.random - > 0:1
+        highlightedNumber = (Math.random() * (max - min) + min).toFixed(2);
+        return highlightedNumber;
+        //alert(highlightedNumber);
+		};
+
+		//game logic
+		var update = function(){
+
+		//	cube.rotation.x += 0.005;
+		//	cube.rotation.y += 0.005; 
+		  Ground.rotation.x += 0.006;
+		  moveClouds();
+		  doExplosionLogic();
+		    //Ground.rotation.y += 0.005;
+		    //at 6 point something the ball almost collides 
+		   //console.log(box.matrixWorld);
+   		//	console.log(box.position.distanceToSquared(heroSphere.position));
+   			 heroSphere.rotation.x -= 0.05;
+
+		   	 //heroSphere.position.x=THREE.Math.lerp(heroSphere.position.x,currentLane, 2*clock.getDelta());//clock.getElapsedTime());
+
+		    //console.log(clock.getElapsedTime());
+		    scoreText.innerHTML = Math.ceil(clock.getElapsedTime()).toString();
+		    if(hasCollided && clock.getElapsedTime() > 10)
+		    	clock.stop();
+   			 impact();
+   			 if(pressed)
+   			 	ballJump();
+   			 //onDocumentKeyDown();
+
+		};
+
+		function impact(){
+			
+			var noOfBoxes = boxes.length;
+			for(var i = 0;i < noOfBoxes; i++){
+				var boxPos = new THREE.Vector3();
+				boxPos.setFromMatrixPosition(boxes[i].matrixWorld);
+				if(boxPos.distanceTo(heroSphere.position)<=0.6){
+		           // console.log("hit");
+		           // changeBoxColor(boxes[i]);
+		            explode();
+		            hasCollided=true;
+		        }
+	        }
+	   		
+
+
+		}
+
+		function changeBoxColor(object){
+
+			object.material.color.setHex(0x0088ff);
+		}
+		
+		function onDocumentKeyDown(event) {
+		    var keyCode = event.which;
+		     if (keyCode == 65 && heroSphere.position.x > -1) {
+		        heroSphere.position.x -= 1;
+		       // console.log(heroSphere.position.x);
+		    } else if (keyCode == 68 && heroSphere.position.x < 1) {
+		        heroSphere.position.x += 1;
+		       // console.log(heroSphere.position.x);
+		    } 
+		    if(keyCode == 38)
+		    {
+		    	ballJump();
+		    	pressed = true;
+		    }
+		};
+
+
+		var render = function(){
+
+			renderer.render(scene,camera);
+
+			
+
+		};
+
+		var GameLoop = function(){
+
+			requestAnimationFrame(GameLoop);
+
+			update();
+			render();
+
+		};
+		init();
+		GameLoop();
+	</script>
+
+</body>
+</html>
